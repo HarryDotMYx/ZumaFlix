@@ -1,5 +1,5 @@
-import { Outlet, Link } from "react-router-dom";
-import { Mail, Terminal, Shield } from "lucide-react";
+import { Outlet } from "react-router-dom";
+import { Mail, Terminal } from "lucide-react";
 
 const GuestLayout = () => {
   return (
@@ -15,7 +15,7 @@ const GuestLayout = () => {
               </div>
               <div>
                 <h1 className="font-heading font-black text-xl tracking-tight text-white uppercase">
-                  Netflix Ops
+                  ZumaFLIX
                 </h1>
                 <p className="text-xs text-[#a3a3a3] font-mono tracking-wider">
                   EMAIL HISTORY VIEWER
@@ -31,17 +31,6 @@ const GuestLayout = () => {
                   Email History
                 </span>
               </div>
-
-              <Link
-                to="/login"
-                className="flex items-center gap-2 px-4 py-2 text-[#a3a3a3] hover:text-white hover:bg-white/5 transition-all"
-                data-testid="admin-login-link"
-              >
-                <Shield className="w-4 h-4" />
-                <span className="text-sm font-semibold uppercase tracking-wider hidden sm:inline">
-                  Admin Login
-                </span>
-              </Link>
             </nav>
           </div>
         </div>
@@ -56,7 +45,7 @@ const GuestLayout = () => {
       <footer className="border-t border-[#262626] bg-[#0A0A0A] mt-auto">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <p className="text-center text-xs text-[#666] font-mono">
-            NETFLIX HOUSEHOLD AUTOMATION SYSTEM v1.0 - GUEST VIEW
+            ZUMAFLIX EMAIL AUTOMATION SYSTEM v1.0
           </p>
         </div>
       </footer>

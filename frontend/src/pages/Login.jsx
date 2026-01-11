@@ -50,7 +50,7 @@ const Login = () => {
           </div>
           <div className="text-left">
             <h1 className="font-heading font-black text-2xl tracking-tight text-white uppercase">
-              Netflix Ops
+              ZumaFLIX
             </h1>
             <p className="text-xs text-[#a3a3a3] font-mono tracking-wider">
               ADMIN LOGIN
