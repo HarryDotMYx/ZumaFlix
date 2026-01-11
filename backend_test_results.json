@@ -1,0 +1,204 @@
+{
+  "summary": {
+    "tests_run": 15,
+    "tests_passed": 15,
+    "success_rate": 100.0
+  },
+  "results": [
+    {
+      "test": "Root API",
+      "method": "GET",
+      "endpoint": "",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Netflix Household Automation API"
+      }
+    },
+    {
+      "test": "Get Dashboard Stats",
+      "method": "GET",
+      "endpoint": "stats",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "total_emails": 0,
+        "links_clicked": 0,
+        "errors": 0,
+        "is_monitoring": false,
+        "last_check": null
+      }
+    },
+    {
+      "test": "Get Config (Empty)",
+      "method": "GET",
+      "endpoint": "config",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": null
+    },
+    {
+      "test": "Create Config",
+      "method": "POST",
+      "endpoint": "config",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "id": "ce201936-0114-49c9-8a8a-ae2aae3fbeee",
+        "email": "test@gmail.com",
+        "imap_server": "imap.gmail.com",
+        "imap_port": 993,
+        "polling_interval": 60,
+        "auto_click": true,
+        "created_at": "2026-01-11T13:13:32.018340+00:00",
+        "updated_at": "2026-01-11T13:13:32.018344+00:00"
+      }
+    },
+    {
+      "test": "Get Config (Existing)",
+      "method": "GET",
+      "endpoint": "config",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "id": "ce201936-0114-49c9-8a8a-ae2aae3fbeee",
+        "email": "test@gmail.com",
+        "imap_server": "imap.gmail.com",
+        "imap_port": 993,
+        "polling_interval": 60,
+        "auto_click": true,
+        "created_at": "2026-01-11T13:13:32.018340+00:00",
+        "updated_at": "2026-01-11T13:13:32.018344+00:00"
+      }
+    },
+    {
+      "test": "Test Connection",
+      "method": "POST",
+      "endpoint": "config/test",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "success": false,
+        "message": "b'[AUTHENTICATIONFAILED] Invalid credentials (Failure)'"
+      }
+    },
+    {
+      "test": "Get Email Logs",
+      "method": "GET",
+      "endpoint": "emails",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": []
+    },
+    {
+      "test": "Get Activity Logs",
+      "method": "GET",
+      "endpoint": "logs",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": [
+        {
+          "id": "09f4149f-e580-4bf5-81f9-55f423451e88",
+          "timestamp": "2026-01-11T13:13:32.142749+00:00",
+          "level": "ERROR",
+          "message": "IMAP connection test failed: b'[AUTHENTICATIONFAILED] Invalid credentials (Failure)'"
+        }
+      ]
+    },
+    {
+      "test": "Get Monitoring Status",
+      "method": "GET",
+      "endpoint": "monitor/status",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "is_running": false,
+        "last_check": null,
+        "emails_processed": 0,
+        "links_clicked": 0,
+        "errors": 0
+      }
+    },
+    {
+      "test": "Start Monitoring",
+      "method": "POST",
+      "endpoint": "monitor/start",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Monitoring started"
+      }
+    },
+    {
+      "test": "Stop Monitoring",
+      "method": "POST",
+      "endpoint": "monitor/stop",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Monitoring stopped"
+      }
+    },
+    {
+      "test": "Check Now",
+      "method": "POST",
+      "endpoint": "monitor/check-now",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Check completed",
+        "stats": {
+          "last_check": null,
+          "emails_processed": 0,
+          "links_clicked": 0,
+          "errors": 2
+        }
+      }
+    },
+    {
+      "test": "Clear Email Logs",
+      "method": "DELETE",
+      "endpoint": "emails",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Email logs cleared"
+      }
+    },
+    {
+      "test": "Clear Activity Logs",
+      "method": "DELETE",
+      "endpoint": "logs",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Logs cleared"
+      }
+    },
+    {
+      "test": "Delete Config",
+      "method": "DELETE",
+      "endpoint": "config",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Configuration deleted"
+      }
+    }
+  ]
+}
