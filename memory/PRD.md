@@ -8,6 +8,10 @@ A Script to Automate Netflix Household from an Email Mailbox. This application m
 - Action on Detection: Automatically click/follow the verification link
 - Monitoring: Both real-time polling and manual trigger
 - Dashboard Features: IMAP credentials config, email history view
+- Admin Access: Username: AdminZuma, Password: Zuma2925!
+- Role-based Access: Admin (Dashboard+Settings) vs Guest (Email History only)
+- Multiple email accounts support
+- Two email types: Household Update + Temporary Access Code
 
 ## Architecture
 - **Backend**: FastAPI (Python) with Motor (async MongoDB)
@@ -15,6 +19,7 @@ A Script to Automate Netflix Household from an Email Mailbox. This application m
 - **Database**: MongoDB
 - **Email**: IMAP library for Gmail integration
 - **HTTP Client**: httpx for clicking verification links
+- **Auth**: Session-based token authentication
 
 ## Core Requirements
 1. Monitor Gmail IMAP inbox for Netflix household verification emails
@@ -22,13 +27,19 @@ A Script to Automate Netflix Household from an Email Mailbox. This application m
 3. Automatically click verification links (or manual trigger)
 4. Web dashboard for configuration and monitoring
 5. Email history with status tracking
+6. Support multiple email accounts
+7. Support both email types: Household updates + Temporary access codes
 
-## What's Been Implemented (December 2025)
+## What's Been Implemented (January 2026)
 
 ### Backend APIs
-- `/api/config` - CRUD for IMAP configuration
-- `/api/config/test` - Test IMAP connection
-- `/api/emails` - Email logs history
+- `/api/auth/login` - Admin login
+- `/api/auth/verify` - Token verification
+- `/api/auth/logout` - Logout
+- `/api/accounts` - CRUD for IMAP accounts (multiple)
+- `/api/accounts/{id}/test` - Test IMAP connection
+- `/api/config/monitoring` - Polling interval & auto-click settings
+- `/api/emails` - Email logs history with type filter
 - `/api/monitor/status` - Monitoring status
 - `/api/monitor/start` - Start background polling
 - `/api/monitor/stop` - Stop monitoring
@@ -37,9 +48,14 @@ A Script to Automate Netflix Household from an Email Mailbox. This application m
 - `/api/stats` - Dashboard statistics
 
 ### Frontend Pages
-- **Dashboard**: Control center with stats, monitoring controls, activity log, recent emails
-- **Settings**: IMAP configuration form with Gmail setup instructions
-- **History**: Email history with status badges and verification links
+- **Guest Email History** (`/`): Public view of detected Netflix emails with type filter
+- **Admin Login** (`/login`): Username/password authentication
+- **Admin Dashboard** (`/admin`): Control center with stats, monitoring controls
+- **Admin Settings** (`/admin/settings`): Multiple email account management, monitoring config
+
+### Email Types Supported
+1. **Household Update**: "Did you request to update your Netflix household?" - Auto-clicks "Yes, this was me" link
+2. **Temporary Access Code**: "Your Netflix temporary access code" - Displays 6-digit code
 
 ### Design Theme
 - "Netflix Ops Control" dark theme
@@ -47,22 +63,23 @@ A Script to Automate Netflix Household from an Email Mailbox. This application m
 - Fonts: Chivo (headings), Manrope (body), JetBrains Mono (data)
 
 ## P0 - Implemented ✅
+- [x] Admin authentication (AdminZuma/Zuma2925!)
+- [x] Role-based access (Admin vs Guest)
+- [x] Multiple email accounts support
 - [x] IMAP email monitoring
-- [x] Netflix email detection
-- [x] Verification link extraction
-- [x] Auto-click functionality
+- [x] Netflix email detection (both types)
+- [x] Verification link extraction & auto-click
+- [x] Temporary access code extraction
 - [x] Dashboard with stats
-- [x] Settings configuration
-- [x] Email history
+- [x] Email history with filtering
+- [x] Settings with account management
 
 ## P1 - Next Phase
 - [ ] Email notifications when links are clicked
-- [ ] Multiple email account support
 - [ ] Webhook notifications
-- [ ] Email filtering rules
+- [ ] Email filtering rules by sender/subject
 
 ## P2 - Future Enhancements
-- [ ] Mobile-responsive improvements
-- [ ] Dark/light theme toggle
-- [ ] Export email history
 - [ ] Statistics charts/graphs
+- [ ] Export email history
+- [ ] Dark/light theme toggle
