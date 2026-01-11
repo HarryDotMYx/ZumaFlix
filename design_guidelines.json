@@ -1,0 +1,119 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "Netflix Ops Control",
+      "archetype": "Electric & Neon (Archetype 2)",
+      "vibe": "Cinematic, Stealth, Automated, Technical",
+      "emotional_tone": "Reliable, High-Tech, 'Set and Forget'",
+      "theme_mode": "dark"
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Chivo, sans-serif",
+        "body": "Manrope, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "weights": {
+        "headings": "900",
+        "body": "400",
+        "bold": "700"
+      },
+      "scale": {
+        "h1": "text-5xl tracking-tighter font-black uppercase",
+        "h2": "text-3xl tracking-tight font-bold",
+        "h3": "text-xl tracking-tight font-semibold",
+        "body": "text-base leading-relaxed",
+        "mono": "text-sm tracking-wide"
+      }
+    },
+    "colors": {
+      "palette": {
+        "background": "#050505",
+        "surface": "#0A0A0A",
+        "surface_highlight": "#121212",
+        "primary": "#E50914",
+        "primary_glow": "rgba(229, 9, 20, 0.5)",
+        "success": "#46d369",
+        "warning": "#f59e0b",
+        "error": "#b91c1c",
+        "text_primary": "#e5e5e5",
+        "text_secondary": "#a3a3a3",
+        "border": "#262626"
+      },
+      "gradients": {
+        "hero": "linear-gradient(180deg, rgba(229,9,20,0.1) 0%, rgba(5,5,5,0) 100%)",
+        "card_hover": "linear-gradient(45deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)"
+      }
+    },
+    "layout": {
+      "grid_system": "The 'Control Room' Grid (Mode B)",
+      "spacing": {
+        "container_padding": "p-6 md:p-12",
+        "gap": "gap-6",
+        "section_spacing": "py-12"
+      },
+      "border_radius": {
+        "card": "rounded-none",
+        "button": "rounded-sm",
+        "input": "rounded-none"
+      }
+    },
+    "visual_enhancers": {
+      "textures": [
+        "Subtle Scanline Overlay (CSS repeating-linear-gradient)",
+        "Noise Texture (opacity 0.03)"
+      ],
+      "effects": [
+        "Red Glow on Active Status: box-shadow: 0 0 20px rgba(229, 9, 20, 0.3)",
+        "1px Border on all cards (Border Color: #262626)"
+      ],
+      "animations": [
+        "Pulse effect for 'Monitoring' status",
+        "Terminal text typing effect for logs"
+      ]
+    },
+    "components": {
+      "buttons": {
+        "primary": "bg-[#E50914] hover:bg-[#f40612] text-white rounded-sm font-bold uppercase tracking-wider px-8 py-3 transition-all duration-200 shadow-[0_0_15px_rgba(229,9,20,0.4)] hover:shadow-[0_0_25px_rgba(229,9,20,0.6)]",
+        "secondary": "bg-transparent border border-[#404040] text-white hover:bg-white/5 rounded-sm uppercase tracking-wider px-6 py-3"
+      },
+      "cards": {
+        "style": "bg-[#0A0A0A] border border-[#262626] rounded-none p-6 relative overflow-hidden group",
+        "hover": "hover:border-[#E50914]/50 transition-colors duration-300"
+      },
+      "inputs": {
+        "style": "bg-[#121212] border border-[#333] focus:border-[#E50914] rounded-none text-white p-4 placeholder:text-gray-600 focus:ring-1 focus:ring-[#E50914] transition-all"
+      },
+      "status_indicators": {
+        "active": "bg-[#46d369] shadow-[0_0_10px_#46d369]",
+        "inactive": "bg-[#333]",
+        "error": "bg-[#E50914] shadow-[0_0_10px_#E50914]"
+      }
+    },
+    "assets": {
+      "images": {
+        "hero_bg": "https://images.unsplash.com/photo-1741795990548-52848e8d7d9e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGRpZ2l0YWwlMjBkYXRhJTIwc3RyZWFtJTIwcmVkfGVufDB8fHx8MTc2ODEzNjg4MHww&ixlib=rb-4.1.0&q=85",
+        "netflix_logo_concept": "https://images.unsplash.com/photo-1678329885854-e15fea8b5ed5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwxfHxuZXRmbGl4JTIwbG9nbyUyMGJsYWNrJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NjgxMzY4Nzd8MA&ixlib=rb-4.1.0&q=85",
+        "server_tunnel": "https://images.unsplash.com/photo-1651764731401-95d60c62ae8f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxjeWJlcnB1bmslMjBzZXJ2ZXIlMjByb29tJTIwcmVkJTIwbGlnaHRpbmd8ZW58MHx8fHwxNzY4MTM2ODc4fDA&ixlib=rb-4.1.0&q=85"
+      },
+      "icons": "Lucide React (Default) - Use 'Activity', 'ShieldCheck', 'Mail', 'Terminal', 'Settings', 'Play', 'Pause'"
+    }
+  },
+  "implementation_guide": {
+    "steps": [
+      "1. Setup Tailwind Config: Add custom colors (netflix-red, void-black) and fonts (Chivo, Manrope, JetBrains Mono).",
+      "2. Global CSS: Add 'scanline' background pattern and custom scrollbar styling (thin, red thumb).",
+      "3. Layout Structure: Create a 'DashboardLayout' with a fixed sidebar (or top bar) and a main content area using the 'Control Room' grid.",
+      "4. Components: Build 'StatCard', 'LogTerminal' (with auto-scroll), and 'ConfigForm'.",
+      "5. Dashboard Page: Assemble the grid. Top row: Status & Quick Stats. Middle: Main Activity Graph/Log. Bottom: Recent Actions.",
+      "6. Settings Page: Form for IMAP credentials with 'Test Connection' button."
+    ],
+    "universal_rules": [
+      "DO NOT use gradients for backgrounds. Use solid dark colors with subtle noise.",
+      "Use 'JetBrains Mono' for all data values (IPs, timestamps, email addresses).",
+      "Status changes must be animated (fade in/out).",
+      "All interactive elements must have a hover state that increases brightness or adds a border glow.",
+      "Use 'sonner' for toast notifications (styled dark with red borders)."
+    ]
+  }
+}
