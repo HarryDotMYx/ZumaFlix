@@ -88,7 +88,7 @@ const AdminLayout = () => {
       <footer className="border-t border-[#262626] bg-[#0A0A0A] mt-auto">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <p className="text-center text-xs text-[#666] font-mono">
-            ZUMAFLIX EMAIL AUTOMATION SYSTEM v1.0 - ADMIN
+            Made By HarryDotMYx
           </p>
         </div>
       </footer>
