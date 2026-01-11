@@ -34,7 +34,7 @@ Automatically monitors your Gmail inbox for Netflix household verification email
 Before you begin, ensure you have the following installed:
 
 - **Python 3.11+**
-- **Node.js 18+** and **Yarn**
+- **Node.js 18+** and **Yarn 1.22+**
 - **MongoDB 6.0+**
 - **Git**
 
@@ -42,9 +42,24 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 python3 --version    # Should be 3.11+
-node --version       # Should be 18+
-yarn --version       # Should be 1.22+
+node --version       # Should be 18+ (v18.x or v20.x)
+yarn --version       # Should be 1.22+ (NOT 0.32)
 mongod --version     # Should be 6.0+
+```
+
+### Node.js Installation (jika belum ada)
+
+```bash
+# Ubuntu/Debian - Install Node.js 18
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Atau install Node.js 20 (latest LTS)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Windows - Download dari:
+# https://nodejs.org/en/download/
 ```
 
 ---
