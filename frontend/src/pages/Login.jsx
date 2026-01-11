@@ -106,15 +106,6 @@ const Login = () => {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-[#262626]">
-            <p className="text-center text-xs text-[#666] font-mono">
-              Guest users can view{" "}
-              <a href="/" className="text-[#E50914] hover:underline">
-                Email History
-              </a>
-            </p>
-          </div>
         </div>
       </div>
     </div>
