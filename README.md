@@ -122,14 +122,123 @@ npm install --legacy-peer-deps
 npm start
 ```
 
-### 4. Database Setup
+### 4. Database Setup (MongoDB)
+
+MongoDB adalah database yang digunakan untuk simpan data email dan config.
+
+#### Option A: Install MongoDB di Ubuntu/Debian (Recommended)
 
 ```bash
-# Start MongoDB (if not running as a service)
-mongod --dbpath /path/to/your/data
+# Step 1: Import MongoDB public GPG key
+curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
 
-# Or using Docker:
-docker run -d -p 27017:27017 --name mongodb mongo:6.0
+# Step 2: Add MongoDB repository
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+
+# Step 3: Update package list
+sudo apt update
+
+# Step 4: Install MongoDB
+sudo apt install -y mongodb-org
+
+# Step 5: Start MongoDB service
+sudo systemctl start mongod
+
+# Step 6: Enable MongoDB to start on boot
+sudo systemctl enable mongod
+
+# Step 7: Check status (should show "active (running)")
+sudo systemctl status mongod
+```
+
+#### Option B: Install MongoDB di Windows
+
+1. Download MongoDB dari: https://www.mongodb.com/try/download/community
+2. Run installer (.msi file)
+3. Pilih "Complete" installation
+4. Check "Install MongoDB as a Service"
+5. Finish installation
+6. MongoDB akan auto-start sebagai Windows Service
+
+#### Option C: Menggunakan Docker (Paling Mudah)
+
+```bash
+# Install Docker dulu jika belum ada
+# Kemudian run MongoDB container:
+docker run -d \
+  --name mongodb \
+  -p 27017:27017 \
+  -v mongodb_data:/data/db \
+  mongo:7.0
+
+# Check container running:
+docker ps
+```
+
+#### Option D: Menggunakan MongoDB Atlas (Cloud - Free Tier)
+
+1. Pergi ke https://www.mongodb.com/cloud/atlas
+2. Sign up / Login
+3. Create FREE cluster (M0 Sandbox)
+4. Setup username & password untuk database
+5. Whitelist IP address (atau allow 0.0.0.0/0 untuk semua)
+6. Get connection string, contoh:
+   ```
+   mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/zumaflix_db
+   ```
+7. Update `/backend/.env`:
+   ```env
+   MONGO_URL="mongodb+srv://username:password@cluster0.xxxxx.mongodb.net"
+   DB_NAME="zumaflix_db"
+   ```
+
+#### Verify MongoDB Connection
+
+```bash
+# Test connection menggunakan mongosh
+mongosh
+
+# Atau test dari Python
+python3 -c "from pymongo import MongoClient; c=MongoClient('mongodb://localhost:27017'); print('Connected!' if c.server_info() else 'Failed')"
+```
+
+#### Database Location (Local Installation)
+
+| OS | Default Data Path |
+|----|-------------------|
+| Ubuntu/Linux | `/var/lib/mongodb` |
+| Windows | `C:\Program Files\MongoDB\Server\7.0\data` |
+| macOS | `/usr/local/var/mongodb` |
+
+#### MongoDB Commands Berguna
+
+```bash
+# Start MongoDB
+sudo systemctl start mongod
+
+# Stop MongoDB
+sudo systemctl stop mongod
+
+# Restart MongoDB
+sudo systemctl restart mongod
+
+# Check logs jika ada masalah
+sudo tail -f /var/log/mongodb/mongod.log
+
+# Masuk ke MongoDB shell
+mongosh
+
+# Dalam mongosh - lihat semua databases
+show dbs
+
+# Dalam mongosh - guna database zumaflix
+use zumaflix_db
+
+# Dalam mongosh - lihat collections
+show collections
+
+# Dalam mongosh - lihat data emails
+db.email_logs.find().pretty()
 ```
 
 ---
