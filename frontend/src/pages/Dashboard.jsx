@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, CheckCircle, AlertCircle, Play, Pause, RefreshCw, Activity } from "lucide-react";
+import { Mail, CheckCircle, AlertCircle, Play, Pause, RefreshCw, Activity, Users } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import StatCard from "../components/StatCard";
@@ -14,6 +14,9 @@ const Dashboard = () => {
     total_emails: 0,
     links_clicked: 0,
     errors: 0,
+    household_emails: 0,
+    access_code_emails: 0,
+    active_accounts: 0,
     is_monitoring: false,
     last_check: null,
   });
@@ -101,6 +104,17 @@ const Dashboard = () => {
     }
   };
 
+  const getTypeBadge = (type) => {
+    switch (type) {
+      case "household_update":
+        return <span className="badge badge-default" style={{ background: 'rgba(229,9,20,0.2)', color: '#E50914', border: '1px solid rgba(229,9,20,0.3)' }}>Household</span>;
+      case "temporary_access":
+        return <span className="badge badge-default" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>Access Code</span>;
+      default:
+        return <span className="badge badge-default">Other</span>;
+    }
+  };
+
   return (
     <div className="space-y-8" data-testid="dashboard-page">
       {/* Header Section */}
@@ -157,12 +171,30 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stat-grid">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard
-          title="Emails Detected"
+          title="Active Accounts"
+          value={stats.active_accounts}
+          icon={Users}
+          variant="default"
+        />
+        <StatCard
+          title="Total Emails"
           value={stats.total_emails}
           icon={Mail}
           variant="default"
+        />
+        <StatCard
+          title="Household"
+          value={stats.household_emails}
+          icon={Activity}
+          variant="error"
+        />
+        <StatCard
+          title="Access Codes"
+          value={stats.access_code_emails}
+          icon={Mail}
+          variant="warning"
         />
         <StatCard
           title="Links Clicked"
@@ -175,12 +207,6 @@ const Dashboard = () => {
           value={stats.errors}
           icon={AlertCircle}
           variant="error"
-        />
-        <StatCard
-          title="Status"
-          value={stats.is_monitoring ? "Active" : "Idle"}
-          icon={Activity}
-          variant={stats.is_monitoring ? "success" : "default"}
         />
       </div>
 
@@ -210,22 +236,18 @@ const Dashboard = () => {
                   className="p-3 bg-[#121212] border border-[#262626] hover:border-[#E50914]/30 transition-colors"
                   data-testid={`email-item-${index}`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white font-medium truncate mb-1">
-                        {email.subject}
-                      </p>
-                      <p className="text-xs text-[#666] font-mono">
-                        {new Date(email.processed_at).toLocaleString()}
-                      </p>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex gap-2">
+                      {getTypeBadge(email.email_type)}
+                      {getStatusBadge(email.status)}
                     </div>
-                    {getStatusBadge(email.status)}
                   </div>
-                  {email.verification_link && (
-                    <p className="text-xs text-[#a3a3a3] font-mono mt-2 truncate">
-                      Link: {email.verification_link.substring(0, 50)}...
-                    </p>
-                  )}
+                  <p className="text-sm text-white font-medium truncate mb-1">
+                    {email.subject}
+                  </p>
+                  <p className="text-xs text-[#666] font-mono">
+                    {email.account_name} • {email.recipient}
+                  </p>
                 </div>
               ))
             )}

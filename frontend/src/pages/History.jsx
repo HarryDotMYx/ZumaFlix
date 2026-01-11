@@ -1,20 +1,31 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, ExternalLink, Trash2, RefreshCw } from "lucide-react";
+import { Mail, ExternalLink, RefreshCw, Key, Home, Filter } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { Button } from "../components/ui/button";
 import { ScrollArea } from "../components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const History = () => {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
 
   const fetchEmails = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/emails?limit=100`);
+      const url = filter === "all" 
+        ? `${API}/emails?limit=100`
+        : `${API}/emails?limit=100&email_type=${filter}`;
+      const response = await axios.get(url);
       setEmails(response.data);
     } catch (error) {
       console.error("Error fetching emails:", error);
@@ -22,25 +33,11 @@ const History = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filter]);
 
   useEffect(() => {
     fetchEmails();
   }, [fetchEmails]);
-
-  const handleClearHistory = async () => {
-    if (!window.confirm("Are you sure you want to clear all email history?")) {
-      return;
-    }
-
-    try {
-      await axios.delete(`${API}/emails`);
-      setEmails([]);
-      toast.success("Email history cleared");
-    } catch (error) {
-      toast.error("Failed to clear history");
-    }
-  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -52,6 +49,27 @@ const History = () => {
         return <span className="badge badge-warning">Expired</span>;
       default:
         return <span className="badge badge-default">Detected</span>;
+    }
+  };
+
+  const getTypeBadge = (type) => {
+    switch (type) {
+      case "household_update":
+        return (
+          <span className="badge flex items-center gap-1" style={{ background: 'rgba(229,9,20,0.2)', color: '#E50914', border: '1px solid rgba(229,9,20,0.3)' }}>
+            <Home className="w-3 h-3" />
+            Household Update
+          </span>
+        );
+      case "temporary_access":
+        return (
+          <span className="badge flex items-center gap-1" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
+            <Key className="w-3 h-3" />
+            Temporary Access
+          </span>
+        );
+      default:
+        return <span className="badge badge-default">Other</span>;
     }
   };
 
@@ -73,12 +91,26 @@ const History = () => {
               Email History
             </h1>
             <p className="text-[#a3a3a3] text-sm font-mono">
-              {emails.length} NETFLIX EMAILS PROCESSED
+              {emails.length} NETFLIX EMAILS FOUND
             </p>
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-[#a3a3a3]" />
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-[180px] bg-[#121212] border-[#262626] text-white" data-testid="email-type-filter">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0A0A0A] border-[#262626]">
+                <SelectItem value="all" className="text-white hover:bg-[#262626]">All Emails</SelectItem>
+                <SelectItem value="household_update" className="text-white hover:bg-[#262626]">Household Updates</SelectItem>
+                <SelectItem value="temporary_access" className="text-white hover:bg-[#262626]">Temporary Access</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button
             onClick={fetchEmails}
             disabled={loading}
@@ -88,17 +120,6 @@ const History = () => {
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
-          </Button>
-
-          <Button
-            onClick={handleClearHistory}
-            disabled={emails.length === 0}
-            variant="destructive"
-            className="flex items-center gap-2 bg-transparent border border-[#b91c1c] text-[#E50914] hover:bg-[#E50914]/10"
-            data-testid="clear-history-btn"
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear History
           </Button>
         </div>
       </div>
@@ -115,7 +136,7 @@ const History = () => {
             <Mail className="w-12 h-12 text-[#333] mx-auto mb-4" />
             <p className="text-[#666] font-mono text-lg mb-2">No emails found</p>
             <p className="text-[#444] text-sm">
-              Netflix household verification emails will appear here when detected.
+              Netflix emails will appear here when detected.
             </p>
           </div>
         ) : (
@@ -127,46 +148,77 @@ const History = () => {
                   className="p-4 bg-[#121212] border border-[#262626] hover:border-[#E50914]/30 transition-colors"
                   data-testid={`history-email-${index}`}
                 >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        {getStatusBadge(email.status)}
-                        <span className="text-xs text-[#666] font-mono">
-                          {formatDate(email.processed_at)}
-                        </span>
-                      </div>
-
-                      <h4 className="text-white font-semibold mb-2 break-words">
-                        {email.subject}
-                      </h4>
-
-                      <p className="text-sm text-[#a3a3a3] font-mono mb-2">
-                        From: {email.sender}
-                      </p>
-
-                      {email.verification_link && (
-                        <div className="mt-3 p-3 bg-[#0A0A0A] border border-[#262626]">
-                          <p className="text-xs text-[#666] font-mono mb-1 uppercase tracking-wider">
-                            Verification Link:
-                          </p>
-                          <a
-                            href={email.verification_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-[#E50914] font-mono break-all hover:underline flex items-start gap-2"
-                          >
-                            <ExternalLink className="w-3 h-3 shrink-0 mt-0.5" />
-                            {email.verification_link}
-                          </a>
-                        </div>
-                      )}
-
-                      {email.click_response && (
-                        <p className="text-xs text-[#a3a3a3] font-mono mt-2">
-                          Response: {email.click_response}
-                        </p>
-                      )}
+                  <div className="flex flex-col gap-4">
+                    {/* Header Row */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {getTypeBadge(email.email_type)}
+                      {getStatusBadge(email.status)}
+                      <span className="text-xs text-[#666] font-mono ml-auto">
+                        {formatDate(email.processed_at)}
+                      </span>
                     </div>
+
+                    {/* Subject */}
+                    <h4 className="text-white font-semibold break-words">
+                      {email.subject}
+                    </h4>
+
+                    {/* Meta Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <p className="text-[#a3a3a3] font-mono">
+                        <span className="text-[#666]">From:</span> {email.sender}
+                      </p>
+                      <p className="text-[#a3a3a3] font-mono">
+                        <span className="text-[#666]">To:</span> {email.recipient}
+                      </p>
+                      <p className="text-[#a3a3a3] font-mono">
+                        <span className="text-[#666]">Account:</span> {email.account_name}
+                      </p>
+                    </div>
+
+                    {/* Verification Link (for Household emails) */}
+                    {email.verification_link && (
+                      <div className="mt-2 p-3 bg-[#0A0A0A] border border-[#262626]">
+                        <p className="text-xs text-[#666] font-mono mb-1 uppercase tracking-wider flex items-center gap-2">
+                          <Home className="w-3 h-3" />
+                          Verification Link:
+                        </p>
+                        <a
+                          href={email.verification_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#E50914] font-mono break-all hover:underline flex items-start gap-2"
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0 mt-0.5" />
+                          {email.verification_link}
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Access Code (for Temporary Access emails) */}
+                    {email.access_code && (
+                      <div className="mt-2 p-3 bg-[#0A0A0A] border border-[#818cf8]/30">
+                        <p className="text-xs text-[#666] font-mono mb-1 uppercase tracking-wider flex items-center gap-2">
+                          <Key className="w-3 h-3 text-[#818cf8]" />
+                          Temporary Access Code:
+                        </p>
+                        <p className="text-2xl font-mono font-bold text-[#818cf8] tracking-widest">
+                          {email.access_code}
+                        </p>
+                        {email.device_info && (
+                          <p className="text-xs text-[#666] font-mono mt-2">
+                            Device: {email.device_info}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Click Response */}
+                    {email.click_response && (
+                      <p className="text-xs text-[#a3a3a3] font-mono">
+                        Response: {email.click_response}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

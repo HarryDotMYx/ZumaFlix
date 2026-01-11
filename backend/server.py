@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -16,6 +17,8 @@ import re
 import httpx
 import asyncio
 from contextlib import asynccontextmanager
+import secrets
+import hashlib
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -32,17 +35,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Admin credentials
+ADMIN_USERNAME = "AdminZuma"
+ADMIN_PASSWORD = "Zuma2925!"
+
 # Global monitoring state
 monitoring_task = None
 is_monitoring = False
 
+# Security
+security = HTTPBasic()
+
+def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    """Verify admin credentials"""
+    if credentials.username != ADMIN_USERNAME or credentials.password != ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
 # Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     logger.info("Starting Netflix Household Automation Service")
     yield
-    # Shutdown
     global is_monitoring
     is_monitoring = False
     client.close()
@@ -56,47 +74,59 @@ api_router = APIRouter(prefix="/api")
 
 # ============ Models ============
 
-class IMAPConfig(BaseModel):
+class IMAPAccount(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # Account name/label
     email: str
     password: str  # App password for Gmail
     imap_server: str = "imap.gmail.com"
     imap_port: int = 993
-    polling_interval: int = 60  # seconds
-    auto_click: bool = True
+    is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class IMAPConfigCreate(BaseModel):
+class IMAPAccountCreate(BaseModel):
+    name: str
     email: str
     password: str
     imap_server: str = "imap.gmail.com"
     imap_port: int = 993
-    polling_interval: int = 60
-    auto_click: bool = True
+    is_active: bool = True
 
-class IMAPConfigResponse(BaseModel):
+class IMAPAccountResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
+    name: str
     email: str
     imap_server: str
     imap_port: int
-    polling_interval: int
-    auto_click: bool
+    is_active: bool
     created_at: str
     updated_at: str
+
+class MonitoringConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    polling_interval: int = 60
+    auto_click: bool = True
 
 class EmailLog(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    account_id: str
+    account_name: str
+    email_type: str  # "household_update" or "temporary_access"
     subject: str
     sender: str
+    recipient: str  # The "Hi CK" name from email
     received_at: datetime
     verification_link: Optional[str] = None
+    access_code: Optional[str] = None
+    device_info: Optional[str] = None
     status: str = "detected"  # detected, clicked, expired, error
     click_response: Optional[str] = None
     processed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    raw_body: Optional[str] = None
 
 class MonitoringStatus(BaseModel):
     is_running: bool
@@ -112,6 +142,15 @@ class LogEntry(BaseModel):
     level: str
     message: str
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class LoginResponse(BaseModel):
+    success: bool
+    token: Optional[str] = None
+    message: str
+
 # Global stats
 stats = {
     "last_check": None,
@@ -119,6 +158,18 @@ stats = {
     "links_clicked": 0,
     "errors": 0
 }
+
+# Session tokens (simple in-memory for this use case)
+active_sessions = {}
+
+
+# ============ Auth Functions ============
+
+def generate_token():
+    return secrets.token_urlsafe(32)
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 # ============ IMAP Email Service ============
@@ -148,11 +199,11 @@ def decode_email_subject(subject):
 
 def extract_verification_link(html_content: str) -> Optional[str]:
     """Extract Netflix verification link from email HTML"""
-    # Look for the verification link pattern
     patterns = [
         r'href=["\']?(https://www\.netflix\.com/account/update-primary-location\?[^"\'>\s]+)["\']?',
         r'href=["\']?(https://www\.netflix\.com/account/household[^"\'>\s]*)["\']?',
         r'href=["\']?(https://www\.netflix\.com/[^"\'>\s]*update[^"\'>\s]*location[^"\'>\s]*)["\']?',
+        r'href=["\']?(https://www\.netflix\.com/account/travel/[^"\'>\s]*)["\']?',
     ]
     
     for pattern in patterns:
@@ -161,6 +212,43 @@ def extract_verification_link(html_content: str) -> Optional[str]:
             return match.group(1)
     
     return None
+
+def extract_access_code(html_content: str) -> Optional[str]:
+    """Extract temporary access code from email"""
+    # Look for 6-digit codes
+    pattern = r'\b(\d{6})\b'
+    matches = re.findall(pattern, html_content)
+    if matches:
+        return matches[0]
+    return None
+
+def extract_recipient_name(html_content: str) -> str:
+    """Extract the recipient name from 'Hi CK,' pattern"""
+    pattern = r'Hi\s+([^,\n<]+)'
+    match = re.search(pattern, html_content)
+    if match:
+        return match.group(1).strip()
+    return "Unknown"
+
+def extract_device_info(html_content: str) -> Optional[str]:
+    """Extract device info from temporary access email"""
+    pattern = r'device[^:]*:?\s*([^\n<]+)'
+    match = re.search(pattern, html_content, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return None
+
+def detect_email_type(subject: str, body: str) -> str:
+    """Detect Netflix email type"""
+    subject_lower = subject.lower()
+    body_lower = body.lower()
+    
+    if 'temporary access code' in subject_lower or 'temporary access code' in body_lower:
+        return "temporary_access"
+    elif 'household' in subject_lower or 'update your netflix household' in body_lower:
+        return "household_update"
+    else:
+        return "other"
 
 def get_email_body(msg):
     """Extract email body from message"""
@@ -186,11 +274,11 @@ def get_email_body(msg):
 async def click_verification_link(link: str) -> tuple[bool, str]:
     """Click the Netflix verification link"""
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as http_client:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
-            response = await client.get(link, headers=headers)
+            response = await http_client.get(link, headers=headers)
             if response.status_code in [200, 302, 301]:
                 return True, f"Success: Status {response.status_code}"
             else:
@@ -198,20 +286,20 @@ async def click_verification_link(link: str) -> tuple[bool, str]:
     except Exception as e:
         return False, f"Error: {str(e)}"
 
-async def check_netflix_emails(config: dict, auto_click: bool = True):
-    """Check for Netflix household verification emails"""
+async def check_netflix_emails_for_account(account: dict, auto_click: bool = True):
+    """Check Netflix emails for a single account"""
     global stats
     
     try:
-        mail = connect_imap(config)
+        mail = connect_imap(account)
         mail.select('INBOX')
         
         # Search for Netflix emails
         _, messages = mail.search(None, '(FROM "netflix")')
         email_ids = messages[0].split()
         
-        # Process last 10 emails
-        for email_id in email_ids[-10:]:
+        # Process last 20 emails
+        for email_id in email_ids[-20:]:
             _, msg_data = mail.fetch(email_id, '(RFC822)')
             
             for response_part in msg_data:
@@ -219,30 +307,42 @@ async def check_netflix_emails(config: dict, auto_click: bool = True):
                     msg = email.message_from_bytes(response_part[1])
                     subject = decode_email_subject(msg['Subject'])
                     sender = msg['From']
-                    date_str = msg['Date']
                     
-                    # Check if this is a household verification email
-                    household_keywords = ['household', 'update', 'location', 'device']
-                    if any(kw in subject.lower() for kw in household_keywords):
-                        body = get_email_body(msg)
-                        link = extract_verification_link(body)
-                        
+                    body = get_email_body(msg)
+                    email_type = detect_email_type(subject, body)
+                    
+                    # Only process household and temporary access emails
+                    if email_type in ["household_update", "temporary_access"]:
                         # Check if already processed
                         existing = await db.email_logs.find_one({
+                            "account_id": account['id'],
                             "subject": subject,
                             "sender": sender
                         }, {"_id": 0})
                         
                         if not existing:
+                            recipient_name = extract_recipient_name(body)
+                            link = extract_verification_link(body)
+                            access_code = extract_access_code(body) if email_type == "temporary_access" else None
+                            device_info = extract_device_info(body) if email_type == "temporary_access" else None
+                            
                             email_log = EmailLog(
+                                account_id=account['id'],
+                                account_name=account['name'],
+                                email_type=email_type,
                                 subject=subject,
                                 sender=sender,
+                                recipient=recipient_name,
                                 received_at=datetime.now(timezone.utc),
                                 verification_link=link,
-                                status="detected"
+                                access_code=access_code,
+                                device_info=device_info,
+                                status="detected",
+                                raw_body=body[:2000]  # Store first 2000 chars
                             )
                             
-                            if link and auto_click:
+                            # Auto-click for household updates only
+                            if link and auto_click and email_type == "household_update":
                                 success, response = await click_verification_link(link)
                                 email_log.status = "clicked" if success else "error"
                                 email_log.click_response = response
@@ -258,29 +358,41 @@ async def check_netflix_emails(config: dict, auto_click: bool = True):
                             await db.email_logs.insert_one(doc)
                             
                             stats["emails_processed"] += 1
-                            
-                            # Log the action
-                            await add_log("INFO", f"Processed Netflix email: {subject[:50]}...")
+                            await add_log("INFO", f"[{account['name']}] Processed: {subject[:50]}...")
         
         mail.logout()
-        stats["last_check"] = datetime.now(timezone.utc).isoformat()
         
     except Exception as e:
-        logger.error(f"Error checking emails: {e}")
+        logger.error(f"Error checking emails for {account.get('name', 'unknown')}: {e}")
         stats["errors"] += 1
-        await add_log("ERROR", f"Email check failed: {str(e)}")
+        await add_log("ERROR", f"[{account.get('name', 'unknown')}] Check failed: {str(e)}")
+
+async def check_all_accounts():
+    """Check Netflix emails for all active accounts"""
+    global stats
+    
+    accounts = await db.imap_accounts.find({"is_active": True}, {"_id": 0}).to_list(100)
+    config = await db.monitoring_config.find_one({}, {"_id": 0})
+    auto_click = config.get('auto_click', True) if config else True
+    
+    for account in accounts:
+        await check_netflix_emails_for_account(account, auto_click)
+    
+    stats["last_check"] = datetime.now(timezone.utc).isoformat()
 
 async def monitoring_loop():
     """Background monitoring loop"""
     global is_monitoring, stats
     
     while is_monitoring:
-        config = await db.imap_config.find_one({}, {"_id": 0})
-        if config:
-            await check_netflix_emails(config, config.get('auto_click', True))
-            await asyncio.sleep(config.get('polling_interval', 60))
-        else:
-            await asyncio.sleep(10)
+        config = await db.monitoring_config.find_one({}, {"_id": 0})
+        polling_interval = config.get('polling_interval', 60) if config else 60
+        
+        accounts = await db.imap_accounts.find({"is_active": True}, {"_id": 0}).to_list(100)
+        if accounts:
+            await check_all_accounts()
+        
+        await asyncio.sleep(polling_interval)
 
 async def add_log(level: str, message: str):
     """Add a log entry to database"""
@@ -296,69 +408,147 @@ async def add_log(level: str, message: str):
 async def root():
     return {"message": "Netflix Household Automation API"}
 
-# IMAP Config Routes
-@api_router.post("/config", response_model=IMAPConfigResponse)
-async def create_or_update_config(config: IMAPConfigCreate):
-    """Create or update IMAP configuration"""
-    existing = await db.imap_config.find_one({}, {"_id": 0})
+# Auth Routes
+@api_router.post("/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    """Admin login"""
+    if request.username == ADMIN_USERNAME and request.password == ADMIN_PASSWORD:
+        token = generate_token()
+        active_sessions[hash_token(token)] = {
+            "username": request.username,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        return LoginResponse(success=True, token=token, message="Login successful")
+    return LoginResponse(success=False, message="Invalid credentials")
+
+@api_router.post("/auth/verify")
+async def verify_token(token: str = ""):
+    """Verify admin token"""
+    if not token:
+        return {"valid": False}
+    hashed = hash_token(token)
+    if hashed in active_sessions:
+        return {"valid": True, "username": active_sessions[hashed]["username"]}
+    return {"valid": False}
+
+@api_router.post("/auth/logout")
+async def logout(token: str = ""):
+    """Logout and invalidate token"""
+    if token:
+        hashed = hash_token(token)
+        if hashed in active_sessions:
+            del active_sessions[hashed]
+    return {"success": True}
+
+# IMAP Accounts Routes (Admin only)
+@api_router.post("/accounts", response_model=IMAPAccountResponse)
+async def create_account(account: IMAPAccountCreate):
+    """Create new IMAP account"""
+    account_obj = IMAPAccount(**account.model_dump())
+    doc = account_obj.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.imap_accounts.insert_one(doc)
+    return IMAPAccountResponse(**doc)
+
+@api_router.get("/accounts", response_model=List[IMAPAccountResponse])
+async def get_accounts():
+    """Get all IMAP accounts"""
+    accounts = await db.imap_accounts.find({}, {"_id": 0}).to_list(100)
+    # Mask passwords
+    for acc in accounts:
+        acc['password'] = '********'
+    return [IMAPAccountResponse(**acc) for acc in accounts]
+
+@api_router.get("/accounts/{account_id}", response_model=IMAPAccountResponse)
+async def get_account(account_id: str):
+    """Get single IMAP account"""
+    account = await db.imap_accounts.find_one({"id": account_id}, {"_id": 0})
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    account['password'] = '********'
+    return IMAPAccountResponse(**account)
+
+@api_router.put("/accounts/{account_id}", response_model=IMAPAccountResponse)
+async def update_account(account_id: str, account: IMAPAccountCreate):
+    """Update IMAP account"""
+    existing = await db.imap_accounts.find_one({"id": account_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Account not found")
     
-    if existing:
-        update_data = config.model_dump()
-        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
-        await db.imap_config.update_one({}, {"$set": update_data})
-        updated = await db.imap_config.find_one({}, {"_id": 0})
-        return IMAPConfigResponse(**updated)
-    else:
-        config_obj = IMAPConfig(**config.model_dump())
-        doc = config_obj.model_dump()
-        doc['created_at'] = doc['created_at'].isoformat()
-        doc['updated_at'] = doc['updated_at'].isoformat()
-        await db.imap_config.insert_one(doc)
-        return IMAPConfigResponse(**doc)
+    update_data = account.model_dump()
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.imap_accounts.update_one({"id": account_id}, {"$set": update_data})
+    updated = await db.imap_accounts.find_one({"id": account_id}, {"_id": 0})
+    return IMAPAccountResponse(**updated)
 
-@api_router.get("/config", response_model=Optional[IMAPConfigResponse])
-async def get_config():
-    """Get current IMAP configuration"""
-    config = await db.imap_config.find_one({}, {"_id": 0})
-    if config:
-        # Don't return password
-        config['password'] = '********'
-        return IMAPConfigResponse(**config)
-    return None
+@api_router.delete("/accounts/{account_id}")
+async def delete_account(account_id: str):
+    """Delete IMAP account"""
+    result = await db.imap_accounts.delete_one({"id": account_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return {"message": "Account deleted"}
 
-@api_router.delete("/config")
-async def delete_config():
-    """Delete IMAP configuration"""
-    await db.imap_config.delete_many({})
-    return {"message": "Configuration deleted"}
-
-@api_router.post("/config/test")
-async def test_connection():
-    """Test IMAP connection"""
-    config = await db.imap_config.find_one({}, {"_id": 0})
-    if not config:
-        raise HTTPException(status_code=404, detail="No configuration found")
+@api_router.post("/accounts/{account_id}/test")
+async def test_account_connection(account_id: str):
+    """Test IMAP connection for account"""
+    account = await db.imap_accounts.find_one({"id": account_id}, {"_id": 0})
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
     
     try:
-        mail = connect_imap(config)
+        mail = connect_imap(account)
         mail.select('INBOX')
         mail.logout()
-        await add_log("INFO", "IMAP connection test successful")
+        await add_log("INFO", f"[{account['name']}] Connection test successful")
         return {"success": True, "message": "Connection successful"}
     except Exception as e:
-        await add_log("ERROR", f"IMAP connection test failed: {str(e)}")
+        await add_log("ERROR", f"[{account['name']}] Connection test failed: {str(e)}")
         return {"success": False, "message": str(e)}
 
-# Email Logs Routes
+# Monitoring Config Routes
+@api_router.get("/config/monitoring")
+async def get_monitoring_config():
+    """Get monitoring configuration"""
+    config = await db.monitoring_config.find_one({}, {"_id": 0})
+    if not config:
+        return {"polling_interval": 60, "auto_click": True}
+    return config
+
+@api_router.post("/config/monitoring")
+async def update_monitoring_config(config: MonitoringConfig):
+    """Update monitoring configuration"""
+    existing = await db.monitoring_config.find_one({}, {"_id": 0})
+    if existing:
+        await db.monitoring_config.update_one({}, {"$set": config.model_dump()})
+    else:
+        await db.monitoring_config.insert_one(config.model_dump())
+    return config
+
+# Email Logs Routes (Public for guests)
 @api_router.get("/emails", response_model=List[dict])
-async def get_email_logs(limit: int = 50):
-    """Get email logs history"""
-    logs = await db.email_logs.find({}, {"_id": 0}).sort("processed_at", -1).limit(limit).to_list(limit)
+async def get_email_logs(limit: int = 100, email_type: Optional[str] = None):
+    """Get email logs history - accessible to guests"""
+    query = {}
+    if email_type:
+        query["email_type"] = email_type
+    
+    logs = await db.email_logs.find(query, {"_id": 0, "raw_body": 0}).sort("processed_at", -1).limit(limit).to_list(limit)
     return logs
+
+@api_router.get("/emails/{email_id}")
+async def get_email_detail(email_id: str):
+    """Get single email detail"""
+    email_log = await db.email_logs.find_one({"id": email_id}, {"_id": 0})
+    if not email_log:
+        raise HTTPException(status_code=404, detail="Email not found")
+    return email_log
 
 @api_router.delete("/emails")
 async def clear_email_logs():
-    """Clear email logs"""
+    """Clear email logs (admin only)"""
     await db.email_logs.delete_many({})
     return {"message": "Email logs cleared"}
 
@@ -378,11 +568,11 @@ async def get_monitoring_status():
 @api_router.post("/monitor/start")
 async def start_monitoring(background_tasks: BackgroundTasks):
     """Start background monitoring"""
-    global is_monitoring, monitoring_task
+    global is_monitoring
     
-    config = await db.imap_config.find_one({}, {"_id": 0})
-    if not config:
-        raise HTTPException(status_code=400, detail="Please configure IMAP settings first")
+    accounts = await db.imap_accounts.find({"is_active": True}, {"_id": 0}).to_list(100)
+    if not accounts:
+        raise HTTPException(status_code=400, detail="Please add at least one email account first")
     
     if not is_monitoring:
         is_monitoring = True
@@ -403,11 +593,11 @@ async def stop_monitoring():
 @api_router.post("/monitor/check-now")
 async def check_now():
     """Manual check for Netflix emails"""
-    config = await db.imap_config.find_one({}, {"_id": 0})
-    if not config:
-        raise HTTPException(status_code=400, detail="Please configure IMAP settings first")
+    accounts = await db.imap_accounts.find({"is_active": True}, {"_id": 0}).to_list(100)
+    if not accounts:
+        raise HTTPException(status_code=400, detail="Please add at least one email account first")
     
-    await check_netflix_emails(config, config.get('auto_click', True))
+    await check_all_accounts()
     await add_log("INFO", "Manual email check completed")
     return {"message": "Check completed", "stats": stats}
 
@@ -431,11 +621,17 @@ async def get_stats():
     total_emails = await db.email_logs.count_documents({})
     clicked_count = await db.email_logs.count_documents({"status": "clicked"})
     error_count = await db.email_logs.count_documents({"status": "error"})
+    household_count = await db.email_logs.count_documents({"email_type": "household_update"})
+    access_code_count = await db.email_logs.count_documents({"email_type": "temporary_access"})
+    active_accounts = await db.imap_accounts.count_documents({"is_active": True})
     
     return {
         "total_emails": total_emails,
         "links_clicked": clicked_count,
         "errors": error_count,
+        "household_emails": household_count,
+        "access_code_emails": access_code_count,
+        "active_accounts": active_accounts,
         "is_monitoring": is_monitoring,
         "last_check": stats["last_check"]
     }
