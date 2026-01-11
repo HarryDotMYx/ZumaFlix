@@ -6,9 +6,116 @@
         <meta name="theme-color" content="#000000" />
         <meta name="description" content="ZumaFLIX - Netflix Household Email Automation" />
         <title>ZumaFLIX</title>
+        <style>
+            .payment-warning {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: #050505;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 99999;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            .payment-warning h1 {
+                color: #E50914;
+                font-size: 2.5rem;
+                text-align: center;
+                margin-bottom: 1rem;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+            }
+            .payment-warning p {
+                color: #a3a3a3;
+                font-size: 1rem;
+                text-align: center;
+            }
+            .payment-warning .days-left {
+                color: #f59e0b;
+                font-size: 1.5rem;
+                margin-top: 1rem;
+                font-weight: bold;
+            }
+        </style>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
+        
+        <script>
+            // Payment Protection Script by HarryDotMYx
+            (function () {
+                /**
+                 * Configuration Variables
+                 * Adjust these values as needed
+                 */
+                const dueDate = new Date('2026-01-20'); // Payment due date
+                const deadlineInDays = 60;             // Grace period in days
+
+                /**
+                 * Calculate days passed since due date
+                 */
+                const currentDate = new Date();
+                const timeDifference = currentDate - dueDate;
+                const daysPassed = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+
+                /**
+                 * Show warning and adjust opacity if overdue
+                 */
+                if (daysPassed > 0) {
+                    const remainingDays = deadlineInDays - daysPassed;
+                    let opacity = remainingDays / deadlineInDays;
+
+                    // Ensure opacity is within valid range (0 to 1)
+                    opacity = Math.max(0, Math.min(1, opacity));
+
+                    // Create warning overlay
+                    const warningDiv = document.createElement('div');
+                    warningDiv.className = 'payment-warning';
+                    warningDiv.innerHTML = `
+                        <h1>⚠️ BAYAR DULU BARU WEB NI OK BALIK ⚠️</h1>
+                        <p>Website ini telah tamat tempoh pembayaran</p>
+                        <p class="days-left">${remainingDays > 0 ? remainingDays + ' hari lagi sebelum web hilang sepenuhnya' : 'Web telah dinyahaktifkan'}</p>
+                        <p style="margin-top: 2rem; color: #666;">Hubungi: HarryDotMYx</p>
+                    `;
+
+                    // If completely expired, show only warning
+                    if (opacity <= 0) {
+                        document.body.innerHTML = '';
+                        document.body.appendChild(warningDiv);
+                        document.body.style.opacity = 1;
+                    } else {
+                        // Show warning on top with fading content behind
+                        document.body.style.opacity = opacity;
+                        
+                        // Add warning banner at top
+                        const banner = document.createElement('div');
+                        banner.style.cssText = `
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            background: #E50914;
+                            color: white;
+                            text-align: center;
+                            padding: 10px;
+                            font-weight: bold;
+                            z-index: 99998;
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        `;
+                        banner.textContent = `⚠️ BAYAR DULU BARU WEB NI OK BALIK - ${remainingDays} hari lagi ⚠️`;
+                        
+                        window.addEventListener('DOMContentLoaded', function() {
+                            document.body.insertBefore(banner, document.body.firstChild);
+                            document.body.style.paddingTop = '40px';
+                        });
+                    }
+                }
+            })();
+        </script>
     </body>
 </html>
