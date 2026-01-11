@@ -83,34 +83,42 @@ pip install -r requirements.txt
 # Navigate to frontend directory
 cd ../frontend
 
-# Install dependencies (use one of these methods)
+# IMPORTANT: Fix yarn first (your system has broken yarn 0.32)
+# Remove broken yarn and install correct version:
+sudo apt remove cmdtest -y 2>/dev/null  # Remove conflicting package
+sudo npm uninstall -g yarn
+sudo npm install -g yarn@1.22.22
 
-# Method 1: Using npm (Recommended if yarn has issues)
-npm install
+# Verify yarn is correct version
+yarn --version  # Should show 1.22.22
 
-# Method 2: Using yarn (if properly installed)
+# Now install dependencies
 yarn install
 
-# Method 3: If yarn command fails, reinstall yarn first
-npm install -g yarn
-yarn install
+# OR use npm with legacy peer deps flag:
+npm install --legacy-peer-deps
 ```
 
-#### Troubleshooting Yarn Issues
+#### Common Installation Issues
 
-If you see errors like `ERROR: There are no scenarios` or `No such file or directory: 'install'`:
-
+**Issue 1: Yarn shows version "0.32+git"**
 ```bash
-# Check if yarn is properly installed
-which yarn
-yarn --version
+# This is cmdtest package, not real yarn. Fix it:
+sudo apt remove cmdtest -y
+sudo npm install -g yarn@1.22.22
+```
 
-# If yarn is broken, reinstall it:
-npm uninstall -g yarn
-npm install -g yarn
+**Issue 2: npm ERESOLVE dependency conflict**
+```bash
+# Use legacy peer deps flag:
+npm install --legacy-peer-deps
+```
 
-# Or use npm instead (works the same):
-npm install
+**Issue 3: "craco: not found"**
+```bash
+# Dependencies not installed. Run:
+npm install --legacy-peer-deps
+# Then try again:
 npm start
 ```
 
