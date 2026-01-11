@@ -1,7 +1,7 @@
 {
   "summary": {
-    "tests_run": 15,
-    "tests_passed": 15,
+    "tests_run": 26,
+    "tests_passed": 26,
     "success_rate": 100.0
   },
   "results": [
@@ -17,69 +17,112 @@
       }
     },
     {
-      "test": "Get Dashboard Stats",
-      "method": "GET",
-      "endpoint": "stats",
+      "test": "Admin Login (Valid)",
+      "method": "POST",
+      "endpoint": "auth/login",
       "expected_status": 200,
       "actual_status": 200,
       "success": true,
       "response_data": {
-        "total_emails": 0,
-        "links_clicked": 0,
-        "errors": 0,
-        "is_monitoring": false,
-        "last_check": null
+        "success": true,
+        "token": "Li1KuQDDKlEUr3M618L0g8t98jFLTFqLzSIsoFFdaog",
+        "message": "Login successful"
       }
     },
     {
-      "test": "Get Config (Empty)",
-      "method": "GET",
-      "endpoint": "config",
-      "expected_status": 200,
-      "actual_status": 200,
-      "success": true,
-      "response_data": null
-    },
-    {
-      "test": "Create Config",
+      "test": "Admin Login (Invalid)",
       "method": "POST",
-      "endpoint": "config",
+      "endpoint": "auth/login",
       "expected_status": 200,
       "actual_status": 200,
       "success": true,
       "response_data": {
-        "id": "ce201936-0114-49c9-8a8a-ae2aae3fbeee",
+        "success": false,
+        "token": null,
+        "message": "Invalid credentials"
+      }
+    },
+    {
+      "test": "Token Verify",
+      "method": "POST",
+      "endpoint": "auth/verify?token=Li1KuQDDKlEUr3M618L0g8t98jFLTFqLzSIsoFFdaog",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "valid": true,
+        "username": "AdminZuma"
+      }
+    },
+    {
+      "test": "Get Accounts (Empty)",
+      "method": "GET",
+      "endpoint": "accounts",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": []
+    },
+    {
+      "test": "Create Account",
+      "method": "POST",
+      "endpoint": "accounts",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "id": "304ced8b-865a-43bd-aed5-c08e0cda78b7",
+        "name": "Test Gmail Account",
         "email": "test@gmail.com",
         "imap_server": "imap.gmail.com",
         "imap_port": 993,
-        "polling_interval": 60,
-        "auto_click": true,
-        "created_at": "2026-01-11T13:13:32.018340+00:00",
-        "updated_at": "2026-01-11T13:13:32.018344+00:00"
+        "is_active": true,
+        "created_at": "2026-01-11T13:27:21.612732+00:00",
+        "updated_at": "2026-01-11T13:27:21.612743+00:00"
       }
     },
     {
-      "test": "Get Config (Existing)",
+      "test": "Get Accounts (With Data)",
       "method": "GET",
-      "endpoint": "config",
+      "endpoint": "accounts",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": [
+        {
+          "id": "304ced8b-865a-43bd-aed5-c08e0cda78b7",
+          "name": "Test Gmail Account",
+          "email": "test@gmail.com",
+          "imap_server": "imap.gmail.com",
+          "imap_port": 993,
+          "is_active": true,
+          "created_at": "2026-01-11T13:27:21.612732+00:00",
+          "updated_at": "2026-01-11T13:27:21.612743+00:00"
+        }
+      ]
+    },
+    {
+      "test": "Get Single Account",
+      "method": "GET",
+      "endpoint": "accounts/304ced8b-865a-43bd-aed5-c08e0cda78b7",
       "expected_status": 200,
       "actual_status": 200,
       "success": true,
       "response_data": {
-        "id": "ce201936-0114-49c9-8a8a-ae2aae3fbeee",
+        "id": "304ced8b-865a-43bd-aed5-c08e0cda78b7",
+        "name": "Test Gmail Account",
         "email": "test@gmail.com",
         "imap_server": "imap.gmail.com",
         "imap_port": 993,
-        "polling_interval": 60,
-        "auto_click": true,
-        "created_at": "2026-01-11T13:13:32.018340+00:00",
-        "updated_at": "2026-01-11T13:13:32.018344+00:00"
+        "is_active": true,
+        "created_at": "2026-01-11T13:27:21.612732+00:00",
+        "updated_at": "2026-01-11T13:27:21.612743+00:00"
       }
     },
     {
-      "test": "Test Connection",
+      "test": "Test Account Connection",
       "method": "POST",
-      "endpoint": "config/test",
+      "endpoint": "accounts/304ced8b-865a-43bd-aed5-c08e0cda78b7/test",
       "expected_status": 200,
       "actual_status": 200,
       "success": true,
@@ -89,9 +132,42 @@
       }
     },
     {
+      "test": "Get Monitoring Config",
+      "method": "GET",
+      "endpoint": "config/monitoring",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "polling_interval": 60,
+        "auto_click": true
+      }
+    },
+    {
+      "test": "Update Monitoring Config",
+      "method": "POST",
+      "endpoint": "config/monitoring",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "polling_interval": 120,
+        "auto_click": false
+      }
+    },
+    {
       "test": "Get Email Logs",
       "method": "GET",
       "endpoint": "emails",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": []
+    },
+    {
+      "test": "Get Email Logs (Filtered)",
+      "method": "GET",
+      "endpoint": "emails?email_type=household_update",
       "expected_status": 200,
       "actual_status": 200,
       "success": true,
@@ -106,12 +182,66 @@
       "success": true,
       "response_data": [
         {
-          "id": "09f4149f-e580-4bf5-81f9-55f423451e88",
-          "timestamp": "2026-01-11T13:13:32.142749+00:00",
+          "id": "b99cea87-6663-49d1-8697-8de2bf8ec200",
+          "timestamp": "2026-01-11T13:27:21.818055+00:00",
+          "level": "ERROR",
+          "message": "[Test Gmail Account] Connection test failed: b'[AUTHENTICATIONFAILED] Invalid credentials (Failure)'"
+        },
+        {
+          "id": "6eb62b22-0dbf-470c-951f-28d568cbd62d",
+          "timestamp": "2026-01-11T13:14:36.705412+00:00",
+          "level": "INFO",
+          "message": "Manual email check completed"
+        },
+        {
+          "id": "4070f8f4-0eb1-4106-b607-5d650f686891",
+          "timestamp": "2026-01-11T13:14:36.703769+00:00",
+          "level": "ERROR",
+          "message": "Email check failed: b'[AUTHENTICATIONFAILED] Invalid credentials (Failure)'"
+        },
+        {
+          "id": "4a741458-0abd-42e5-8b69-e557e6953bcb",
+          "timestamp": "2026-01-11T13:14:34.531012+00:00",
+          "level": "INFO",
+          "message": "Monitoring stopped"
+        },
+        {
+          "id": "2abeb348-109e-4014-9fb8-a761938e4af4",
+          "timestamp": "2026-01-11T13:14:32.578345+00:00",
+          "level": "ERROR",
+          "message": "Email check failed: b'[AUTHENTICATIONFAILED] Invalid credentials (Failure)'"
+        },
+        {
+          "id": "0bb0cbdb-d9ef-41fc-baa9-1f385ed8a496",
+          "timestamp": "2026-01-11T13:14:32.470808+00:00",
+          "level": "INFO",
+          "message": "Monitoring started"
+        },
+        {
+          "id": "c0845bf7-3cb0-4159-871c-e9dd11af4568",
+          "timestamp": "2026-01-11T13:14:29.088565+00:00",
           "level": "ERROR",
           "message": "IMAP connection test failed: b'[AUTHENTICATIONFAILED] Invalid credentials (Failure)'"
         }
       ]
+    },
+    {
+      "test": "Get Dashboard Stats",
+      "method": "GET",
+      "endpoint": "stats",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "total_emails": 0,
+        "links_clicked": 0,
+        "errors": 0,
+        "household_emails": 0,
+        "access_code_emails": 0,
+        "active_accounts": 1,
+        "is_monitoring": false,
+        "last_check": null
+      }
     },
     {
       "test": "Get Monitoring Status",
@@ -126,6 +256,46 @@
         "emails_processed": 0,
         "links_clicked": 0,
         "errors": 0
+      }
+    },
+    {
+      "test": "Delete Test Account",
+      "method": "DELETE",
+      "endpoint": "accounts/304ced8b-865a-43bd-aed5-c08e0cda78b7",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Account deleted"
+      }
+    },
+    {
+      "test": "Start Monitoring (No Accounts)",
+      "method": "POST",
+      "endpoint": "monitor/start",
+      "expected_status": 400,
+      "actual_status": 400,
+      "success": true,
+      "response_data": {
+        "detail": "Please add at least one email account first"
+      }
+    },
+    {
+      "test": "Recreate Account",
+      "method": "POST",
+      "endpoint": "accounts",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "id": "0552eb2b-1e19-47fd-952b-659956b73279",
+        "name": "Test Gmail Account 2",
+        "email": "test2@gmail.com",
+        "imap_server": "imap.gmail.com",
+        "imap_port": 993,
+        "is_active": true,
+        "created_at": "2026-01-11T13:27:22.259932+00:00",
+        "updated_at": "2026-01-11T13:27:22.259935+00:00"
       }
     },
     {
@@ -160,11 +330,33 @@
       "response_data": {
         "message": "Check completed",
         "stats": {
-          "last_check": null,
+          "last_check": "2026-01-11T13:27:23.996731+00:00",
           "emails_processed": 0,
           "links_clicked": 0,
           "errors": 2
         }
+      }
+    },
+    {
+      "test": "Admin Logout",
+      "method": "POST",
+      "endpoint": "auth/logout?token=Li1KuQDDKlEUr3M618L0g8t98jFLTFqLzSIsoFFdaog",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "success": true
+      }
+    },
+    {
+      "test": "Delete Test Account",
+      "method": "DELETE",
+      "endpoint": "accounts/0552eb2b-1e19-47fd-952b-659956b73279",
+      "expected_status": 200,
+      "actual_status": 200,
+      "success": true,
+      "response_data": {
+        "message": "Account deleted"
       }
     },
     {
@@ -187,17 +379,6 @@
       "success": true,
       "response_data": {
         "message": "Logs cleared"
-      }
-    },
-    {
-      "test": "Delete Config",
-      "method": "DELETE",
-      "endpoint": "config",
-      "expected_status": 200,
-      "actual_status": 200,
-      "success": true,
-      "response_data": {
-        "message": "Configuration deleted"
       }
     }
   ]
