@@ -210,6 +210,11 @@ uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 **Terminal 2 - Frontend:**
 ```bash
 cd frontend
+
+# Using npm:
+npm start
+
+# Or using yarn:
 yarn start
 ```
 
