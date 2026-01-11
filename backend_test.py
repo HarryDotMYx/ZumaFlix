@@ -266,23 +266,46 @@ def main():
     
     tester = NetflixAutomationAPITester()
     
-    # Test sequence
+    # Test sequence - organized by functionality
     test_functions = [
+        # Basic API
         tester.test_root_endpoint,
-        tester.test_get_stats,
-        tester.test_get_config_empty,
-        tester.test_create_config,
-        tester.test_get_config_existing,
-        tester.test_connection_test_fail,
+        
+        # Authentication tests
+        tester.test_admin_login_valid,
+        tester.test_admin_login_invalid,
+        tester.test_token_verify,
+        
+        # Account management tests
+        tester.test_get_accounts_empty,
+        tester.test_create_account,
+        tester.test_get_accounts_with_data,
+        tester.test_get_single_account,
+        tester.test_account_connection_test,
+        
+        # Configuration tests
+        tester.test_get_monitoring_config,
+        tester.test_update_monitoring_config,
+        
+        # Email and logging tests
         tester.test_get_emails,
+        tester.test_get_emails_filtered,
         tester.test_get_logs,
+        tester.test_get_stats,
+        
+        # Monitoring tests
         tester.test_monitoring_status,
+        tester.test_start_monitoring_no_accounts,
+        tester.test_recreate_account_for_monitoring,
         tester.test_start_monitoring,
         tester.test_stop_monitoring,
         tester.test_check_now,
+        
+        # Cleanup tests
+        tester.test_logout,
+        tester.test_cleanup_account,
         tester.test_clear_emails,
         tester.test_clear_logs,
-        tester.test_delete_config,
     ]
     
     # Run all tests
