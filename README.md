@@ -83,8 +83,35 @@ pip install -r requirements.txt
 # Navigate to frontend directory
 cd ../frontend
 
-# Install dependencies
+# Install dependencies (use one of these methods)
+
+# Method 1: Using npm (Recommended if yarn has issues)
+npm install
+
+# Method 2: Using yarn (if properly installed)
 yarn install
+
+# Method 3: If yarn command fails, reinstall yarn first
+npm install -g yarn
+yarn install
+```
+
+#### Troubleshooting Yarn Issues
+
+If you see errors like `ERROR: There are no scenarios` or `No such file or directory: 'install'`:
+
+```bash
+# Check if yarn is properly installed
+which yarn
+yarn --version
+
+# If yarn is broken, reinstall it:
+npm uninstall -g yarn
+npm install -g yarn
+
+# Or use npm instead (works the same):
+npm install
+npm start
 ```
 
 ### 4. Database Setup
