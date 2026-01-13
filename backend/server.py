@@ -294,71 +294,96 @@ async def check_netflix_emails_for_account(account: dict, auto_click: bool = Tru
         mail = connect_imap(account)
         mail.select('INBOX')
         
-        # Search for Netflix emails
-        _, messages = mail.search(None, '(FROM "netflix")')
-        email_ids = messages[0].split()
+        # Search for Netflix emails (both read and unread)
+        # Try multiple search patterns
+        search_patterns = [
+            '(FROM "netflix.com")',
+            '(FROM "netflix")',
+            '(FROM "account.netflix.com")',
+        ]
         
-        # Process last 20 emails
-        for email_id in email_ids[-20:]:
-            _, msg_data = mail.fetch(email_id, '(RFC822)')
-            
-            for response_part in msg_data:
-                if isinstance(response_part, tuple):
-                    msg = email.message_from_bytes(response_part[1])
-                    subject = decode_email_subject(msg['Subject'])
-                    sender = msg['From']
-                    
-                    body = get_email_body(msg)
-                    email_type = detect_email_type(subject, body)
-                    
-                    # Only process household and temporary access emails
-                    if email_type in ["household_update", "temporary_access"]:
-                        # Check if already processed
-                        existing = await db.email_logs.find_one({
-                            "account_id": account['id'],
-                            "subject": subject,
-                            "sender": sender
-                        }, {"_id": 0})
+        all_email_ids = set()
+        for pattern in search_patterns:
+            try:
+                _, messages = mail.search(None, pattern)
+                if messages[0]:
+                    all_email_ids.update(messages[0].split())
+            except:
+                pass
+        
+        email_ids = list(all_email_ids)
+        logger.info(f"[{account['name']}] Found {len(email_ids)} Netflix emails")
+        
+        # Process last 30 emails
+        for email_id in email_ids[-30:]:
+            try:
+                _, msg_data = mail.fetch(email_id, '(RFC822)')
+                
+                for response_part in msg_data:
+                    if isinstance(response_part, tuple):
+                        msg = email.message_from_bytes(response_part[1])
+                        subject = decode_email_subject(msg['Subject'])
+                        sender = msg['From']
+                        message_id = msg.get('Message-ID', '')
                         
-                        if not existing:
-                            recipient_name = extract_recipient_name(body)
-                            link = extract_verification_link(body)
-                            access_code = extract_access_code(body) if email_type == "temporary_access" else None
-                            device_info = extract_device_info(body) if email_type == "temporary_access" else None
+                        body = get_email_body(msg)
+                        email_type = detect_email_type(subject, body)
+                        
+                        # Only process household and temporary access emails
+                        if email_type in ["household_update", "temporary_access"]:
+                            # Check if already processed using message_id or subject+sender combo
+                            existing = await db.email_logs.find_one({
+                                "$or": [
+                                    {"message_id": message_id} if message_id else {"_id": None},
+                                    {"account_id": account['id'], "subject": subject, "sender": sender}
+                                ]
+                            }, {"_id": 0})
                             
-                            email_log = EmailLog(
-                                account_id=account['id'],
-                                account_name=account['name'],
-                                email_type=email_type,
-                                subject=subject,
-                                sender=sender,
-                                recipient=recipient_name,
-                                received_at=datetime.now(timezone.utc),
-                                verification_link=link,
-                                access_code=access_code,
-                                device_info=device_info,
-                                status="detected",
-                                raw_body=body[:2000]  # Store first 2000 chars
-                            )
-                            
-                            # Auto-click for household updates only
-                            if link and auto_click and email_type == "household_update":
-                                success, response = await click_verification_link(link)
-                                email_log.status = "clicked" if success else "error"
-                                email_log.click_response = response
-                                if success:
-                                    stats["links_clicked"] += 1
-                                else:
-                                    stats["errors"] += 1
-                            
-                            # Save to database
-                            doc = email_log.model_dump()
-                            doc['received_at'] = doc['received_at'].isoformat()
-                            doc['processed_at'] = doc['processed_at'].isoformat()
-                            await db.email_logs.insert_one(doc)
-                            
-                            stats["emails_processed"] += 1
-                            await add_log("INFO", f"[{account['name']}] Processed: {subject[:50]}...")
+                            if not existing:
+                                recipient_name = extract_recipient_name(body)
+                                link = extract_verification_link(body)
+                                access_code = extract_access_code(body) if email_type == "temporary_access" else None
+                                device_info = extract_device_info(body) if email_type == "temporary_access" else None
+                                
+                                email_log = EmailLog(
+                                    account_id=account['id'],
+                                    account_name=account['name'],
+                                    email_type=email_type,
+                                    subject=subject,
+                                    sender=sender,
+                                    recipient=recipient_name,
+                                    received_at=datetime.now(timezone.utc),
+                                    verification_link=link,
+                                    access_code=access_code,
+                                    device_info=device_info,
+                                    status="detected",
+                                    raw_body=body[:2000]  # Store first 2000 chars
+                                )
+                                
+                                # Auto-click for household updates only
+                                if link and auto_click and email_type == "household_update":
+                                    success, response = await click_verification_link(link)
+                                    email_log.status = "clicked" if success else "error"
+                                    email_log.click_response = response
+                                    if success:
+                                        stats["links_clicked"] += 1
+                                        logger.info(f"[{account['name']}] Auto-clicked verification link!")
+                                    else:
+                                        stats["errors"] += 1
+                                
+                                # Save to database
+                                doc = email_log.model_dump()
+                                doc['received_at'] = doc['received_at'].isoformat()
+                                doc['processed_at'] = doc['processed_at'].isoformat()
+                                doc['message_id'] = message_id
+                                await db.email_logs.insert_one(doc)
+                                
+                                stats["emails_processed"] += 1
+                                await add_log("INFO", f"[{account['name']}] NEW: {subject[:50]}...")
+                                logger.info(f"[{account['name']}] Processed new email: {subject[:50]}...")
+            except Exception as e:
+                logger.error(f"Error processing email: {e}")
+                continue
         
         mail.logout()
         
