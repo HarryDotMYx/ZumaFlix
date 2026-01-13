@@ -477,9 +477,21 @@ async def update_account(account_id: str, account: IMAPAccountCreate):
         raise HTTPException(status_code=404, detail="Account not found")
     
     update_data = account.model_dump()
+    # Keep existing password if new one is empty
+    if not update_data.get('password'):
+        update_data['password'] = existing['password']
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     
     await db.imap_accounts.update_one({"id": account_id}, {"$set": update_data})
+    
+    # Update account_name in all email_logs for this account
+    if update_data['name'] != existing.get('name'):
+        await db.email_logs.update_many(
+            {"account_id": account_id},
+            {"$set": {"account_name": update_data['name']}}
+        )
+        await add_log("INFO", f"Updated account name from '{existing.get('name')}' to '{update_data['name']}'")
+    
     updated = await db.imap_accounts.find_one({"id": account_id}, {"_id": 0})
     return IMAPAccountResponse(**updated)
 
