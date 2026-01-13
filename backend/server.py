@@ -243,12 +243,24 @@ def detect_email_type(subject: str, body: str) -> str:
     subject_lower = subject.lower()
     body_lower = body.lower()
     
-    if 'temporary access code' in subject_lower or 'temporary access code' in body_lower:
+    # Temporary access code detection
+    if any(kw in subject_lower for kw in ['temporary access', 'access code', 'temporary code']):
         return "temporary_access"
-    elif 'household' in subject_lower or 'update your netflix household' in body_lower:
+    if any(kw in body_lower for kw in ['temporary access code', 'get a temporary access code']):
+        return "temporary_access"
+    
+    # Household update detection
+    household_keywords = [
+        'household', 'update your netflix', 'update netflix', 
+        'primary location', 'this was me', 'yes, this was me',
+        'update the netflix household', 'netflix household'
+    ]
+    if any(kw in subject_lower for kw in household_keywords):
         return "household_update"
-    else:
-        return "other"
+    if any(kw in body_lower for kw in household_keywords):
+        return "household_update"
+    
+    return "other"
 
 def get_email_body(msg):
     """Extract email body from message"""
